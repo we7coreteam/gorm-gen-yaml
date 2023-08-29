@@ -1,0 +1,22 @@
+relation:
+  - table: bd_declaration_log
+    relate:
+      - table: bd_club
+        foreign_key: club_id
+        type: has_one
+      - table: bd_declaration_gift
+        foreign_key: declaration_gift_id
+        type: has_one
+  - table: bd_club
+    relate:
+      - table: bd_club_user
+        foreign_key: club_id
+        type: has_many
+      - table: bd_user
+        foreign_key: applicant_id
+        type: belongs_to
+  - table: bd_user
+    relate:
+      - table: bd_user_oauth
+        foreign_key: user_id
+        type: has_one
