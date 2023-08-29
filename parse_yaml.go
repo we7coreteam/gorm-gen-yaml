@@ -14,6 +14,7 @@ type yamlGenerate struct {
 	gen            *gen.Generator
 	tableModel     []interface{}
 	tableModelSize int
+	generatedTable map[string]interface{}
 }
 
 func NewYamlGenerate(generator *gen.Generator, path string) (*yamlGenerate, error) {
@@ -26,11 +27,13 @@ func NewYamlGenerate(generator *gen.Generator, path string) (*yamlGenerate, erro
 	}
 	obj.gen = generator
 	obj.tableModel = make([]interface{}, obj.tableModelSize)
+	obj.generatedTable = make(map[string]interface{})
 	return obj, nil
 }
 
 type DbRelation struct {
-	Relation []Relation `yaml:"relation"`
+	Relation    []Relation `yaml:"relation"`
+	RelationMap map[string]Relation
 }
 
 type Relation struct {
@@ -57,8 +60,36 @@ func (self *yamlGenerate) loadFromFile(path string) error {
 		return err
 	}
 	fmt.Printf("%+v \n", self.yaml)
+	self.yaml.RelationMap = make(map[string]Relation)
+
+	for _, relation := range self.yaml.Relation {
+		self.yaml.RelationMap[relation.Table] = relation
+	}
 
 	return nil
+}
+
+func (self *yamlGenerate) generateFromRelation(relation Relation) {
+	if _, exists := self.generatedTable[relation.Table]; exists {
+		return
+	}
+
+	for _, relate := range relation.Relate {
+		if trelation, exists := self.yaml.RelationMap[relate.Table]; exists {
+			self.generateFromRelation(trelation)
+		} else {
+			self.generatedTable[relate.Table] = self.generateTableModel(relate.Table)
+		}
+	}
+
+	//找到所有relate,生成模型
+	self.generatedTable[relation.Table] = self.generateTableModel(relation.Table)
+}
+
+func (self *yamlGenerate) GenerateV1(opt ...gen.ModelOpt) {
+	for _, relation := range self.yaml.Relation {
+		self.generateFromRelation(relation)
+	}
 }
 
 func (self *yamlGenerate) Generate(opt ...gen.ModelOpt) []interface{} {
@@ -74,6 +105,6 @@ func (self *yamlGenerate) Generate(opt ...gen.ModelOpt) []interface{} {
 	return tableModels
 }
 
-func (self *yamlGenerate) generateTableModel(tableName string) {
-
+func (self *yamlGenerate) generateTableModel(tableName string) interface{} {
+	return 1
 }

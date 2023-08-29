@@ -16,7 +16,7 @@ func TestParse(t *testing.T) {
 		Mode:         gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // generate mode
 		ModelPkgPath: "./output/entity",
 	})
-	dsn := "root:123456@tcp(127.0.0.1:3306)/paidashen?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := "root:123456@tcp(172.16.1.198:3306)/paidashen?charset=utf8mb4&parseTime=True&loc=Local"
 	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		//NamingStrategy: schema.NamingStrategy{
 		//	TablePrefix:   "bd_",
@@ -28,9 +28,10 @@ func TestParse(t *testing.T) {
 	parser, err := NewYamlGenerate(g, "./gen.yaml")
 	at.NoError(err)
 
-	fieldOpts := []gen.ModelOpt{}
+	parser.GenerateV1()
+	//fieldOpts := []gen.ModelOpt{}
 	//g.ApplyBasic(g.GenerateAllTable(fieldOpts...)...)
-	g.ApplyBasic(parser.Generate(fieldOpts...)...)
+	//g.ApplyBasic(parser.Generate(fieldOpts...)...)
 	//g.GenerateModel(tableName)
 	g.Execute()
 }
