@@ -1,4 +1,4 @@
-package gorm_gen_yaml
+package yamlgen
 
 import (
 	"fmt"

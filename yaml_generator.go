@@ -1,4 +1,4 @@
-package gorm_gen_yaml
+package yamlgen
 
 import (
 	"errors"
@@ -13,14 +13,11 @@ import (
 type yamlGenerator struct {
 	yaml           *DbRelation
 	gen            *gen.Generator
-	tableModelSize int
 	generatedTable map[string]string
 }
 
 func NewYamlGenerator(path string) *yamlGenerator {
-	obj := &yamlGenerator{
-		tableModelSize: 100,
-	}
+	obj := &yamlGenerator{}
 	err := obj.loadFromFile(path)
 	if err != nil {
 		return nil
