@@ -43,8 +43,7 @@ g := gen.NewGenerator(gen.Config{
 })
 g.UseDB(db)
 fieldOpts := []gen.ModelOpt{}
-
-NewYamlGenerator("./gen.yaml").UseGormGenerator(g).Generate(fieldOpts...)
+yamlgen.NewYamlGenerator("./gen.yaml").UseGormGenerator(g).Generate(fieldOpts...)
 //g.ApplyBasic(g.GenerateAllTable(fieldOpts...)...)
 //g.GenerateModel(tableName)
 g.Execute()
