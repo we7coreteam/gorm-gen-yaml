@@ -5,30 +5,28 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gen"
+	"gorm.io/gen/field"
 	"io"
 	"os"
 )
 
-type yamlGenerate struct {
+type yamlGenerator struct {
 	yaml           *DbRelation
 	gen            *gen.Generator
-	tableModel     []interface{}
 	tableModelSize int
 	generatedTable map[string]interface{}
 }
 
-func NewYamlGenerate(generator *gen.Generator, path string) (*yamlGenerate, error) {
-	obj := &yamlGenerate{
+func NewYamlGenerator(path string) *yamlGenerator {
+	obj := &yamlGenerator{
 		tableModelSize: 100,
 	}
 	err := obj.loadFromFile(path)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	obj.gen = generator
-	obj.tableModel = make([]interface{}, obj.tableModelSize)
 	obj.generatedTable = make(map[string]interface{})
-	return obj, nil
+	return obj
 }
 
 type DbRelation struct {
@@ -39,7 +37,6 @@ type DbRelation struct {
 type Relation struct {
 	Table  string          `yaml:"table"`
 	Relate []RelationTable `yaml:"relate"`
-	isGen  bool
 }
 
 type RelationTable struct {
@@ -48,7 +45,12 @@ type RelationTable struct {
 	Type       string `yaml:"type"`
 }
 
-func (self *yamlGenerate) loadFromFile(path string) error {
+func (self *yamlGenerator) UseGormGenerator(g *gen.Generator) *yamlGenerator {
+	self.gen = g
+	return self
+}
+
+func (self *yamlGenerator) loadFromFile(path string) error {
 	file, err := os.OpenFile(path, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		return errors.New(fmt.Sprintf("%s file not found", path))
@@ -69,7 +71,7 @@ func (self *yamlGenerate) loadFromFile(path string) error {
 	return nil
 }
 
-func (self *yamlGenerate) generateFromRelation(relation Relation) {
+func (self *yamlGenerator) generateFromRelation(relation Relation) {
 	if _, exists := self.generatedTable[relation.Table]; exists {
 		return
 	}
@@ -78,33 +80,39 @@ func (self *yamlGenerate) generateFromRelation(relation Relation) {
 		if trelation, exists := self.yaml.RelationMap[relate.Table]; exists {
 			self.generateFromRelation(trelation)
 		} else {
-			self.generatedTable[relate.Table] = self.generateTableModel(relate.Table)
+			self.generatedTable[relate.Table] = self.gen.GenerateModel(relate.Table)
 		}
 	}
 
 	//找到所有relate,生成模型
-	self.generatedTable[relation.Table] = self.generateTableModel(relation.Table)
+	opt := make([]gen.ModelOpt, len(relation.Relate))
+	for i, table := range relation.Relate {
+		var fieldType field.RelationshipType
+		switch table.Type {
+		case "has_one":
+			fieldType = field.HasOne
+		case "has_many":
+			fieldType = field.HasMany
+		case "many_many":
+			fieldType = field.Many2Many
+		case "belongs_to":
+			fieldType = field.BelongsTo
+		}
+		opt[i] = gen.FieldRelate(fieldType, table.Table, self.generatedTable[table.Table],
+			&field.RelateConfig{
+				GORMTag: field.GormTag{"foreignKey": []string{table.ForeignKey}},
+			})
+	}
+	self.generatedTable[relation.Table] = self.gen.GenerateModel(relation.Table, opt...)
 }
 
-func (self *yamlGenerate) GenerateV1(opt ...gen.ModelOpt) {
+func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) []interface{} {
 	for _, relation := range self.yaml.Relation {
 		self.generateFromRelation(relation)
 	}
-}
-
-func (self *yamlGenerate) Generate(opt ...gen.ModelOpt) []interface{} {
-	tableModels := make([]interface{}, 100)
-	for _, item := range self.yaml.Relation {
-		if len(item.Relate) > 0 {
-			for _, relateItem := range item.Relate {
-				fmt.Println(relateItem.Table)
-			}
-		}
+	tableModels := make([]interface{}, len(self.generatedTable))
+	for _, item := range self.generatedTable {
+		tableModels = append(tableModels, item)
 	}
-	//self.gen.GenerateModel(hasOne.Table, nil)
 	return tableModels
-}
-
-func (self *yamlGenerate) generateTableModel(tableName string) interface{} {
-	return 1
 }

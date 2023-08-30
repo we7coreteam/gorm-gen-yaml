@@ -1,15 +1,16 @@
 package gorm_gen_yaml
 
 import (
-	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/mysql"
 	"gorm.io/gen"
 	"gorm.io/gorm"
+	"os"
 	"testing"
 )
 
 func TestParse(t *testing.T) {
-	at := assert.New(t)
+	os.RemoveAll("./output/dao")
+	os.RemoveAll("./output/entity")
 
 	g := gen.NewGenerator(gen.Config{
 		OutPath:      "./output/dao",
@@ -25,13 +26,10 @@ func TestParse(t *testing.T) {
 	})
 	g.UseDB(db)
 
-	parser, err := NewYamlGenerate(g, "./gen.yaml")
-	at.NoError(err)
-
-	parser.GenerateV1()
-	//fieldOpts := []gen.ModelOpt{}
-	//g.ApplyBasic(g.GenerateAllTable(fieldOpts...)...)
-	//g.ApplyBasic(parser.Generate(fieldOpts...)...)
+	yamlGen := NewYamlGenerator("./gen.yaml").UseGormGenerator(g)
+	fieldOpts := []gen.ModelOpt{}
+	g.ApplyBasic(g.GenerateAllTable(fieldOpts...)...)
+	g.ApplyBasic(yamlGen.Generate(fieldOpts...)...)
 	//g.GenerateModel(tableName)
 	g.Execute()
 }
