@@ -20,4 +20,3 @@ relation:
       - table: bd_user_oauth
         foreign_key: user_id
         type: has_one
-  - table: bd_

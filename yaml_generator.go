@@ -14,7 +14,7 @@ type yamlGenerator struct {
 	yaml           *DbRelation
 	gen            *gen.Generator
 	tableModelSize int
-	generatedTable map[string]interface{}
+	generatedTable map[string]string
 }
 
 func NewYamlGenerator(path string) *yamlGenerator {
@@ -25,7 +25,7 @@ func NewYamlGenerator(path string) *yamlGenerator {
 	if err != nil {
 		return nil
 	}
-	obj.generatedTable = make(map[string]interface{})
+	obj.generatedTable = make(map[string]string)
 	return obj
 }
 
@@ -80,7 +80,9 @@ func (self *yamlGenerator) generateFromRelation(relation Relation) {
 		if trelation, exists := self.yaml.RelationMap[relate.Table]; exists {
 			self.generateFromRelation(trelation)
 		} else {
-			self.generatedTable[relate.Table] = self.gen.GenerateModel(relate.Table)
+			relateMate := self.gen.GenerateModel(relate.Table)
+			self.gen.ApplyBasic(relateMate)
+			self.generatedTable[relate.Table] = relateMate.ModelStructName
 		}
 	}
 
@@ -98,12 +100,15 @@ func (self *yamlGenerator) generateFromRelation(relation Relation) {
 		case "belongs_to":
 			fieldType = field.BelongsTo
 		}
-		opt[i] = gen.FieldRelate(fieldType, table.Table, self.generatedTable[table.Table],
+		opt[i] = gen.FieldRelate(fieldType, table.Table, self.gen.Data[self.generatedTable[table.Table]].QueryStructMeta,
 			&field.RelateConfig{
 				GORMTag: field.GormTag{"foreignKey": []string{table.ForeignKey}},
 			})
 	}
-	self.generatedTable[relation.Table] = self.gen.GenerateModel(relation.Table, opt...)
+
+	relateMate := self.gen.GenerateModel(relation.Table, opt...)
+	self.gen.ApplyBasic(relateMate)
+	self.generatedTable[relation.Table] = relateMate.ModelStructName
 }
 
 func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) []interface{} {
