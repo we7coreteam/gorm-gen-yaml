@@ -100,7 +100,7 @@ func (self *yamlGenerator) generateFromRelation(relation Relation) {
 		case "belongs_to":
 			fieldType = field.BelongsTo
 		}
-		opt[i] = gen.FieldRelate(fieldType, table.Table, self.gen.Data[self.generatedTable[table.Table]].QueryStructMeta,
+		opt[i] = gen.FieldRelate(fieldType, self.generatedTable[table.Table], self.gen.Data[self.generatedTable[table.Table]].QueryStructMeta,
 			&field.RelateConfig{
 				GORMTag: field.GormTag{"foreignKey": []string{table.ForeignKey}},
 			})
@@ -111,13 +111,8 @@ func (self *yamlGenerator) generateFromRelation(relation Relation) {
 	self.generatedTable[relation.Table] = relateMate.ModelStructName
 }
 
-func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) []interface{} {
+func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) {
 	for _, relation := range self.yaml.Relation {
 		self.generateFromRelation(relation)
 	}
-	tableModels := make([]interface{}, len(self.generatedTable))
-	for _, item := range self.generatedTable {
-		tableModels = append(tableModels, item)
-	}
-	return tableModels
 }
