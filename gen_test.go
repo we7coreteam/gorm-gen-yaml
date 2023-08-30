@@ -2,6 +2,7 @@ package gorm_gen_yaml
 
 import (
 	"fmt"
+	"github.com/we7coreteam/gorm-gen-yaml/output/dao"
 	"gorm.io/driver/mysql"
 	"gorm.io/gen"
 	"gorm.io/gorm"
@@ -55,12 +56,12 @@ func TestParse(t *testing.T) {
 	g.Execute()
 }
 
-//func TestSelect(t *testing.T) {
-//	dao.SetDefault(db)
-//	row, _ := dao.Q.DeclarationLog.Preload(dao.Q.DeclarationLog.Club, dao.Q.DeclarationLog.Club.ClubUser).Last()
-//	fmt.Printf("%+v", row.Club.ClubUser)
-//
-//	row1, _ := dao.Q.Club.Preload(dao.Club.User).Where(dao.Club.ID.In(45)).First()
-//	fmt.Printf("%+v \n", row1)
-//	fmt.Printf("%+v \n", row1.User)
-//}
+func TestSelect(t *testing.T) {
+	dao.SetDefault(db)
+	row, _ := dao.Q.DeclarationLog.Preload(dao.Q.DeclarationLog.Club, dao.Q.DeclarationLog.Club.ClubUser).Last()
+	fmt.Printf("%+v", row.Club.ClubUser)
+
+	row1, _ := dao.Q.Club.Preload(dao.Club.User).Where(dao.Club.ID.In(45)).First()
+	fmt.Printf("%+v \n", row1)
+	fmt.Printf("%+v \n", row1.User)
+}
