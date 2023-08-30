@@ -48,7 +48,6 @@ func TestParse(t *testing.T) {
 	})
 	g.UseDB(db)
 	fieldOpts := []gen.ModelOpt{}
-	fmt.Println(db.Config.NamingStrategy.SchemaName("abc_def"))
 
 	NewYamlGenerator("./gen.yaml").UseGormGenerator(g).Generate(fieldOpts...)
 	//g.ApplyBasic(g.GenerateAllTable(fieldOpts...)...)
