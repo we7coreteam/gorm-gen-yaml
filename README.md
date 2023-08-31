@@ -4,6 +4,8 @@
 
 程序会根据配置文件中声明的表之间的依赖关系，按照顺序进行生成。让你摆锐复杂的依赖关系。
 
+output 目录为根据下面配置生成出的文件。
+
 # 配置
 
 ```yaml
@@ -41,8 +43,7 @@ g := gen.NewGenerator(gen.Config{
 })
 g.UseDB(db)
 fieldOpts := []gen.ModelOpt{}
-
-NewYamlGenerator("./gen.yaml").UseGormGenerator(g).Generate(fieldOpts...)
+yamlgen.NewYamlGenerator("./gen.yaml").UseGormGenerator(g).Generate(fieldOpts...)
 //g.ApplyBasic(g.GenerateAllTable(fieldOpts...)...)
 //g.GenerateModel(tableName)
 g.Execute()
