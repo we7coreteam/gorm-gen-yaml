@@ -51,7 +51,16 @@ func TestParse(t *testing.T) {
 
 	NewYamlGenerator("./gen.yaml").UseGormGenerator(g).Generate(fieldOpts...)
 	//g.ApplyBasic(g.GenerateAllTable(fieldOpts...)...)
-	//g.GenerateModel(tableName)
+
+	//userModel := g.GenerateModel("user")
+	//g.ApplyBasic(userModel)
+
+	//userProfileModel := g.GenerateModel("user_oauth")
+	//user := g.GenerateModel("user", gen.FieldRelate(field.HasOne, "UserProfile", userProfileModel, &field.RelateConfig{
+	//	GORMTag: field.GormTag{"foreignKey": []string{"user_id"}},
+	//}))
+	//g.ApplyBasic(user, userProfileModel)
+
 	g.Execute()
 }
 
@@ -63,4 +72,33 @@ func TestSelect(t *testing.T) {
 	row1, _ := dao.Q.Club.Preload(dao.Club.User).Where(dao.Club.ID.In(45)).First()
 	fmt.Printf("%+v \n", row1)
 	fmt.Printf("%+v \n", row1.User)
+}
+
+func TestSql(t *testing.T) {
+	result := map[string]interface{}{}
+	db.Table("bd_user").Take(&result)
+	fmt.Printf("%+v \n", result)
+
+	type User struct {
+		ID       int32  `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
+		Nickname string `gorm:"column:nickname;not null" json:"nickname"` // 昵称
+	}
+
+	var resultUser User
+	db.First(&resultUser)
+	fmt.Printf("%+v \n", resultUser)
+
+	dao.SetDefault(db)
+	resultDao, _ := dao.Q.User.First()
+	fmt.Printf("%+v \n", resultDao)
+
+	resultDao1, _ := dao.Q.User.Preload(dao.Q.User.UserOauth).First()
+	fmt.Printf("%+v \n", resultDao1.UserOauth.Openid)
+
+	dUser := dao.Q.User
+	resultDao2, _ := dUser.Select(dUser.Mobile, dUser.Nickname).Where(dUser.ID.In(1, 20, 30)).Find()
+	for _, user := range resultDao2 {
+		fmt.Printf("%+v \n", user)
+	}
+
 }
