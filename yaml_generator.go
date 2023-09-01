@@ -20,6 +20,7 @@ func NewYamlGenerator(path string) *yamlGenerator {
 	obj := &yamlGenerator{}
 	err := obj.loadFromFile(path)
 	if err != nil {
+		panic(err)
 		return nil
 	}
 	obj.generatedTable = make(map[string]string)
