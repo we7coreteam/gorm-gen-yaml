@@ -6,6 +6,7 @@ relation:
         type: has_one
       - table: declaration_gift
         foreign_key: declaration_gift_id
+        references: id
         type: has_one
   - table: club
     relate:

@@ -37,7 +37,7 @@ type DeclarationLog struct {
 	UpdateTime           int32           `gorm:"column:update_time;not null;comment:修改时间" json:"update_time"`                          // 修改时间
 	DeleteTime           int32           `gorm:"column:delete_time;comment:删除时间" json:"delete_time"`                                   // 删除时间
 	Club                 Club            `gorm:"foreignKey:club_id" json:"club"`
-	DeclarationGift      DeclarationGift `gorm:"foreignKey:declaration_gift_id" json:"declaration_gift"`
+	DeclarationGift      DeclarationGift `gorm:"foreignKey:declaration_gift_id;references:id" json:"declaration_gift"`
 }
 
 // TableName DeclarationLog's table name
