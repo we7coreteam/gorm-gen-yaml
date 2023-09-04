@@ -38,9 +38,13 @@ type Relation struct {
 }
 
 type RelationTable struct {
-	Table      string `yaml:"table"`
-	ForeignKey string `yaml:"foreign_key"`
-	Type       string `yaml:"type"`
+	Table          string `yaml:"table"`
+	ForeignKey     string `yaml:"foreign_key"`
+	References     string `yaml:"references"`
+	JoinForeignKey string `yaml:"join_foreign_key"`
+	JoinReferences string `yaml:"join_references"`
+	Many2many      string `yaml:"many_2_many"`
+	Type           string `yaml:"type"`
 }
 
 func (self *yamlGenerator) UseGormGenerator(g *gen.Generator) *yamlGenerator {
@@ -98,10 +102,26 @@ func (self *yamlGenerator) generateFromRelation(relation Relation) {
 		case "belongs_to":
 			fieldType = field.BelongsTo
 		}
-		opt[i] = gen.FieldRelate(fieldType, self.generatedTable[table.Table], self.gen.Data[self.generatedTable[table.Table]].QueryStructMeta,
-			&field.RelateConfig{
-				GORMTag: field.GormTag{"foreignKey": []string{table.ForeignKey}},
-			})
+		relateConfig := make(field.GormTag)
+
+		if table.ForeignKey != "" {
+			relateConfig.Append("foreignKey", table.ForeignKey)
+		}
+		if table.JoinForeignKey != "" {
+			relateConfig.Append("joinForeignKey", table.JoinForeignKey)
+		}
+		if table.References != "" {
+			relateConfig.Append("references", table.References)
+		}
+		if table.JoinReferences != "" {
+			relateConfig.Append("joinReferences", table.JoinReferences)
+		}
+		if table.Many2many != "" {
+			relateConfig.Append("many2many", table.Many2many)
+		}
+		opt[i] = gen.FieldRelate(fieldType, self.generatedTable[table.Table], self.gen.Data[self.generatedTable[table.Table]].QueryStructMeta, &field.RelateConfig{
+			GORMTag: relateConfig,
+		})
 	}
 
 	relateMate := self.gen.GenerateModel(relation.Table, opt...)
