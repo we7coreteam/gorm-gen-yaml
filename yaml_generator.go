@@ -173,9 +173,6 @@ func (self *yamlGenerator) generateFromTable(table Table) {
 		if err != nil {
 			panic(err)
 		}
-		if len(pkgs) == 0 {
-			panic("找不到完整包")
-		}
 		relateMate.ImportPkgPaths = append(relateMate.ImportPkgPaths, "\""+pkgs[0].PkgPath+"\"")
 	}
 	self.gen.ApplyBasic(relateMate)
