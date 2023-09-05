@@ -10,8 +10,8 @@ table:
         type: has_one
   - table: club
     column:
-      number_limit:
-        custom_type: TestOption
+      content:
+        custom_type: ContentOption
     relate:
       - table: club_user
         foreign_key: club_id
