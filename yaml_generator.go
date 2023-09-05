@@ -3,17 +3,22 @@ package yamlgen
 import (
 	"errors"
 	"fmt"
+	"github.com/we7coreteam/gorm-gen-yaml/template"
+	"golang.org/x/tools/go/packages"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gen"
 	"gorm.io/gen/field"
 	"io"
 	"os"
+	"path"
+	"strings"
 )
 
 type yamlGenerator struct {
-	yaml           *DbRelation
-	gen            *gen.Generator
-	generatedTable map[string]string
+	yaml                *DbTable
+	gen                 *gen.Generator
+	generatedTable      map[string]string
+	customColumnSaveDir string
 }
 
 func NewYamlGenerator(path string) *yamlGenerator {
@@ -27,17 +32,22 @@ func NewYamlGenerator(path string) *yamlGenerator {
 	return obj
 }
 
-type DbRelation struct {
-	Relation    []Relation `yaml:"relation"`
-	RelationMap map[string]Relation
+type DbTable struct {
+	Table    []Table `yaml:"table"`
+	TableMap map[string]Table
 }
 
-type Relation struct {
-	Table  string          `yaml:"table"`
-	Relate []RelationTable `yaml:"relate"`
+type Table struct {
+	Name   string            `yaml:"table"`
+	Relate []Relate          `yaml:"relate"`
+	Column map[string]Column `yaml:"column"`
 }
 
-type RelationTable struct {
+type Column struct {
+	CustomColumnType string `yaml:"custom_type"`
+}
+
+type Relate struct {
 	Table          string `yaml:"table"`
 	ForeignKey     string `yaml:"foreign_key"`
 	References     string `yaml:"references"`
@@ -49,6 +59,9 @@ type RelationTable struct {
 
 func (self *yamlGenerator) UseGormGenerator(g *gen.Generator) *yamlGenerator {
 	self.gen = g
+
+	self.SetCustomColumnSaveDir(g.Config.ModelPkgPath + "/../custom")
+
 	return self
 }
 
@@ -58,29 +71,45 @@ func (self *yamlGenerator) loadFromFile(path string) error {
 		return errors.New(fmt.Sprintf("%s file not found", path))
 	}
 	content, _ := io.ReadAll(file)
-	self.yaml = &DbRelation{}
+	self.yaml = &DbTable{}
 	err = yaml.Unmarshal(content, self.yaml)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%+v \n", self.yaml)
-	self.yaml.RelationMap = make(map[string]Relation)
+	self.yaml.TableMap = make(map[string]Table)
 
-	for _, relation := range self.yaml.Relation {
-		self.yaml.RelationMap[relation.Table] = relation
+	for _, table := range self.yaml.Table {
+		self.yaml.TableMap[table.Name] = table
 	}
 
 	return nil
 }
 
-func (self *yamlGenerator) generateFromRelation(relation Relation) {
-	if _, exists := self.generatedTable[relation.Table]; exists {
+func (self *yamlGenerator) SetCustomColumnSaveDir(customColumnSaveDir string) {
+	self.customColumnSaveDir = customColumnSaveDir
+
+	if err := os.MkdirAll(self.customColumnSaveDir, os.ModePerm); err != nil {
+		panic(err)
+	}
+}
+
+func (self *yamlGenerator) generateCustomColumn(customColumnType string) error {
+	customColumnTemplate := template.CustomColumnTemplate
+	customColumnTemplate = strings.Replace(customColumnTemplate, "{{Package}}", strings.TrimRight(path.Base(self.customColumnSaveDir), "/"), 1)
+	customColumnTemplate = strings.Replace(customColumnTemplate, "{{CustomStructName}}", customColumnType, -1)
+
+	return os.WriteFile(self.customColumnSaveDir+"/"+strings.ToLower(customColumnType)+".go", []byte(customColumnTemplate), 0640)
+}
+
+func (self *yamlGenerator) generateFromTable(table Table) {
+	if _, exists := self.generatedTable[table.Name]; exists {
 		return
 	}
 
-	for _, relate := range relation.Relate {
-		if trelation, exists := self.yaml.RelationMap[relate.Table]; exists {
-			self.generateFromRelation(trelation)
+	for _, relate := range table.Relate {
+		if tTable, exists := self.yaml.TableMap[relate.Table]; exists {
+			self.generateFromTable(tTable)
 		} else {
 			relateMate := self.gen.GenerateModel(relate.Table)
 			self.gen.ApplyBasic(relateMate)
@@ -89,8 +118,8 @@ func (self *yamlGenerator) generateFromRelation(relation Relation) {
 	}
 
 	//找到所有relate,生成模型
-	opt := make([]gen.ModelOpt, len(relation.Relate))
-	for i, table := range relation.Relate {
+	opt := make([]gen.ModelOpt, len(table.Relate)+len(table.Column))
+	for i, table := range table.Relate {
 		var fieldType field.RelationshipType
 		switch table.Type {
 		case "has_one":
@@ -123,14 +152,38 @@ func (self *yamlGenerator) generateFromRelation(relation Relation) {
 			GORMTag: relateConfig,
 		})
 	}
+	//找到column生成自定义column类型
+	i := len(table.Relate)
+	for name, column := range table.Column {
+		err := self.generateCustomColumn(column.CustomColumnType)
+		if err != nil {
+			panic(err)
+		}
 
-	relateMate := self.gen.GenerateModel(relation.Table, opt...)
+		opt[i] = gen.FieldType(name, strings.TrimRight(path.Base(self.customColumnSaveDir), "/")+"."+column.CustomColumnType)
+		i++
+	}
+
+	relateMate := self.gen.GenerateModel(table.Name, opt...)
+	if i > len(table.Relate) {
+		pkgs, err := packages.Load(&packages.Config{
+			Mode: packages.NeedName,
+			Dir:  self.customColumnSaveDir,
+		})
+		if err != nil {
+			panic(err)
+		}
+		if len(pkgs) == 0 {
+			panic("找不到完整包")
+		}
+		relateMate.ImportPkgPaths = append(relateMate.ImportPkgPaths, "\""+pkgs[0].PkgPath+"\"")
+	}
 	self.gen.ApplyBasic(relateMate)
-	self.generatedTable[relation.Table] = relateMate.ModelStructName
+	self.generatedTable[table.Name] = relateMate.ModelStructName
 }
 
 func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) {
-	for _, relation := range self.yaml.Relation {
-		self.generateFromRelation(relation)
+	for _, table := range self.yaml.Table {
+		self.generateFromTable(table)
 	}
 }

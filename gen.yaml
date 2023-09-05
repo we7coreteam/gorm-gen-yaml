@@ -1,4 +1,4 @@
-relation:
+table:
   - table: declaration_log
     relate:
       - table: club
@@ -9,6 +9,9 @@ relation:
         references: id
         type: has_one
   - table: club
+    column:
+      number_limit:
+        custom_type: TestOption
     relate:
       - table: club_user
         foreign_key: club_id
