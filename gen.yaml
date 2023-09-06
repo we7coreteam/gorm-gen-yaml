@@ -13,12 +13,9 @@ table:
       content:
         rename: ContentNew
         comment: 内容
-        type: JsonOption
         tag:
           gorm:
             default: "''"
-          json:
-            test: test
     relate:
       - table: club_user
         foreign_key: club_id

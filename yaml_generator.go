@@ -108,16 +108,19 @@ func (self *yamlGenerator) generateCustomColumn(customColumnType string) error {
 func (self *yamlGenerator) getTableRelateOpt(table Table) []gen.ModelOpt {
 	opt := make([]gen.ModelOpt, len(table.Relate))
 	for i, table := range table.Relate {
+		relatePointer := false
 		var fieldType field.RelationshipType
 		switch table.Type {
 		case "has_one":
 			fieldType = field.HasOne
+			relatePointer = true
 		case "has_many":
 			fieldType = field.HasMany
 		case "many_many":
 			fieldType = field.Many2Many
 		case "belongs_to":
 			fieldType = field.BelongsTo
+			relatePointer = true
 		}
 		relateConfig := make(field.GormTag)
 
@@ -137,7 +140,8 @@ func (self *yamlGenerator) getTableRelateOpt(table Table) []gen.ModelOpt {
 			relateConfig.Append("many2many", table.Many2many)
 		}
 		opt[i] = gen.FieldRelate(fieldType, self.generatedTable[table.Table], self.gen.Data[self.generatedTable[table.Table]].QueryStructMeta, &field.RelateConfig{
-			GORMTag: relateConfig,
+			GORMTag:       relateConfig,
+			RelatePointer: relatePointer,
 		})
 	}
 
