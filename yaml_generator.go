@@ -44,7 +44,10 @@ type Table struct {
 }
 
 type Column struct {
-	CustomColumnType string `yaml:"custom_type"`
+	Type    string                       `yaml:"type"`
+	Tag     map[string]map[string]string `yaml:"tag"`
+	Comment string                       `yaml:"comment"`
+	Rename  string                       `yaml:"rename"`
 }
 
 type Relate struct {
@@ -102,23 +105,8 @@ func (self *yamlGenerator) generateCustomColumn(customColumnType string) error {
 	return os.WriteFile(self.customColumnSaveDir+"/"+strings.ToLower(customColumnType)+".go", []byte(customColumnTemplate), 0640)
 }
 
-func (self *yamlGenerator) generateFromTable(table Table) {
-	if _, exists := self.generatedTable[table.Name]; exists {
-		return
-	}
-
-	for _, relate := range table.Relate {
-		if tTable, exists := self.yaml.TableMap[relate.Table]; exists {
-			self.generateFromTable(tTable)
-		} else {
-			relateMate := self.gen.GenerateModel(relate.Table)
-			self.gen.ApplyBasic(relateMate)
-			self.generatedTable[relate.Table] = relateMate.ModelStructName
-		}
-	}
-
-	//找到所有relate,生成模型
-	opt := make([]gen.ModelOpt, len(table.Relate)+len(table.Column))
+func (self *yamlGenerator) getTableRelateOpt(table Table) []gen.ModelOpt {
+	opt := make([]gen.ModelOpt, len(table.Relate))
 	for i, table := range table.Relate {
 		var fieldType field.RelationshipType
 		switch table.Type {
@@ -152,20 +140,85 @@ func (self *yamlGenerator) generateFromTable(table Table) {
 			GORMTag: relateConfig,
 		})
 	}
-	//找到column生成自定义column类型
-	i := len(table.Relate)
-	for name, column := range table.Column {
-		err := self.generateCustomColumn(column.CustomColumnType)
-		if err != nil {
-			panic(err)
-		}
 
-		opt[i] = gen.FieldType(name, strings.TrimRight(path.Base(self.customColumnSaveDir), "/")+"."+column.CustomColumnType)
-		i++
+	return opt
+}
+
+func (self *yamlGenerator) getTableColumnOpt(table Table) ([]gen.ModelOpt, bool) {
+	opt := make([]gen.ModelOpt, 0)
+	//找到column生成自定义column类型
+	hasOption := false
+	for name, column := range table.Column {
+		if column.Type != "" {
+			if strings.Contains(strings.ToLower(column.Type), "option") {
+				err := self.generateCustomColumn(column.Type)
+				if err != nil {
+					panic(err)
+				}
+				hasOption = true
+				opt = append(opt, gen.FieldType(name, strings.TrimRight(path.Base(self.customColumnSaveDir), "/")+"."+column.Type))
+			} else {
+				opt = append(opt, gen.FieldType(name, column.Type))
+			}
+		}
+		if column.Tag != nil {
+			for tagType, tags := range column.Tag {
+				ttags := tags
+				if tagType == "gorm" {
+					opt = append(opt, gen.FieldGORMTag(name, func(tag field.GormTag) field.GormTag {
+						for tagName, val := range ttags {
+							tag = tag.Set(tagName, val)
+						}
+						return tag
+					}))
+				} else {
+					tTagType := tagType
+					opt = append(opt, gen.FieldTag(name, func(tag field.Tag) field.Tag {
+						tagStr := ""
+						for tagName, val := range ttags {
+							if val == "" {
+								tagStr += tagName + ";"
+							} else {
+								tagStr += tagName + ":" + val + ";"
+							}
+						}
+						return tag.Set(tTagType, strings.TrimRight(tagStr, ";"))
+					}))
+				}
+			}
+		}
+		if column.Rename != "" {
+			opt = append(opt, gen.FieldRename(name, column.Rename))
+		}
+		if column.Comment != "" {
+			opt = append(opt, gen.FieldComment(name, column.Comment))
+		}
 	}
 
+	return opt, hasOption
+}
+
+func (self *yamlGenerator) generateFromTable(table Table) {
+	if _, exists := self.generatedTable[table.Name]; exists {
+		return
+	}
+
+	for _, relate := range table.Relate {
+		if tTable, exists := self.yaml.TableMap[relate.Table]; exists {
+			self.generateFromTable(tTable)
+		} else {
+			relateMate := self.gen.GenerateModel(relate.Table)
+			self.gen.ApplyBasic(relateMate)
+			self.generatedTable[relate.Table] = relateMate.ModelStructName
+		}
+	}
+
+	//找到所有relate,生成模型
+	relateOpt := self.getTableRelateOpt(table)
+	columnOpt, hasOption := self.getTableColumnOpt(table)
+	opt := append(relateOpt, columnOpt...)
 	relateMate := self.gen.GenerateModel(table.Name, opt...)
-	if i > len(table.Relate) {
+	if hasOption {
 		pkgs, err := packages.Load(&packages.Config{
 			Mode: packages.NeedName,
 			Dir:  self.customColumnSaveDir,

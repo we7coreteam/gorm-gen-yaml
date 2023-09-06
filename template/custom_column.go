@@ -13,11 +13,11 @@ type {{CustomStructName}} struct {
 }
 
 func (c {{CustomStructName}}) Value() (driver.Value, error) {
-	//if options == nil {
+	//if c == nil {
 	//	return "", nil
 	//}
 
-	//return json.Marshal(options)
+	//return json.Marshal(c)
 	return c, nil
 }
 
@@ -30,7 +30,7 @@ func (c *{{CustomStructName}}) Scan(value interface{}) error {
 	//	return nil
 	//}
 
-	//return json.Unmarshal(b, &options)
+	//return json.Unmarshal(b, &c)
 
 	return nil
 }
