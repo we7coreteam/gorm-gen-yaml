@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"gorm.io/gen"
 	"gorm.io/gen/field"
+	"gorm.io/gorm/schema"
 	"io"
 	"os"
 	"path"
@@ -44,10 +45,11 @@ type Table struct {
 }
 
 type Column struct {
-	Type    string                       `yaml:"type"`
-	Tag     map[string]map[string]string `yaml:"tag"`
-	Comment string                       `yaml:"comment"`
-	Rename  string                       `yaml:"rename"`
+	Type       string                       `yaml:"type"`
+	Serializer string                       `yaml:"serializer"`
+	Tag        map[string]map[string]string `yaml:"tag"`
+	Comment    string                       `yaml:"comment"`
+	Rename     string                       `yaml:"rename"`
 }
 
 type Relate struct {
@@ -63,7 +65,7 @@ type Relate struct {
 func (self *yamlGenerator) UseGormGenerator(g *gen.Generator) *yamlGenerator {
 	self.gen = g
 
-	self.SetCustomColumnSaveDir(g.Config.ModelPkgPath + "/../custom")
+	self.SetCustomColumnSaveDir(g.Config.ModelPkgPath + "/../accessor")
 
 	return self
 }
@@ -97,12 +99,18 @@ func (self *yamlGenerator) SetCustomColumnSaveDir(customColumnSaveDir string) {
 	}
 }
 
-func (self *yamlGenerator) generateCustomColumn(customColumnType string) error {
-	customColumnTemplate := template.CustomColumnTemplate
+func (self *yamlGenerator) generateCustomColumn(column Column) error {
+	if column.Serializer == "" {
+		column.Serializer = "common"
+	}
+	customColumnTemplate, exists := template.CustomColumnTemplate[column.Serializer]
+	if !exists {
+		return errors.New("serializer type not support")
+	}
 	customColumnTemplate = strings.Replace(customColumnTemplate, "{{Package}}", strings.TrimRight(path.Base(self.customColumnSaveDir), "/"), 1)
-	customColumnTemplate = strings.Replace(customColumnTemplate, "{{CustomStructName}}", customColumnType, -1)
+	customColumnTemplate = strings.Replace(customColumnTemplate, "{{CustomStructName}}", column.Type, -1)
 
-	return os.WriteFile(self.customColumnSaveDir+"/"+strings.ToLower(customColumnType)+".go", []byte(customColumnTemplate), 0640)
+	return os.WriteFile(self.customColumnSaveDir+"/"+schema.NamingStrategy{}.TableName(column.Type)+".gen.go", []byte(customColumnTemplate), 0640)
 }
 
 func (self *yamlGenerator) getTableRelateOpt(table Table) []gen.ModelOpt {
@@ -155,7 +163,7 @@ func (self *yamlGenerator) getTableColumnOpt(table Table) ([]gen.ModelOpt, bool)
 	for name, column := range table.Column {
 		if column.Type != "" {
 			if strings.Contains(strings.ToLower(column.Type), "option") {
-				err := self.generateCustomColumn(column.Type)
+				err := self.generateCustomColumn(column)
 				if err != nil {
 					panic(err)
 				}
