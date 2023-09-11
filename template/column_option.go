@@ -1,21 +1,21 @@
 package template
 
 // Model used as a variable because it cannot load template file after packed, params still can pass file
-var CustomColumnTemplate = map[string]string{"common": `package {{Package}}
+var ColumnOptionTemplate = map[string]string{"common": `package {{Package}}
 
 import (
     "database/sql/driver"
 )
 
-type {{CustomStructName}} struct {
+type {{OptionStructName}} struct {
 
 }
 
-func (c {{CustomStructName}}) Value() (driver.Value, error) {
+func (c {{OptionStructName}}) Value() (driver.Value, error) {
 	return c, nil
 }
 
-func (c *{{CustomStructName}}) Scan(value interface{}) error {
+func (c *{{OptionStructName}}) Scan(value interface{}) error {
 	return nil
 }
 
@@ -28,11 +28,11 @@ import (
 	"fmt"
 )
 
-type {{CustomStructName}} struct {
+type {{OptionStructName}} struct {
 
 }
 
-func (c {{CustomStructName}}) Value() (driver.Value, error) {
+func (c {{OptionStructName}}) Value() (driver.Value, error) {
 	if &c == nil {
 		return "", nil
 	}
@@ -40,7 +40,7 @@ func (c {{CustomStructName}}) Value() (driver.Value, error) {
 	return json.Marshal(c)
 }
 
-func (c *{{CustomStructName}}) Scan(value interface{}) error {
+func (c *{{OptionStructName}}) Scan(value interface{}) error {
 	b, ok := value.([]byte)
 	if !ok {
 		return fmt.Errorf("value is not []byte, value: %v", value)

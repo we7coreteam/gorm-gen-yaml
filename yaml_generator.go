@@ -19,7 +19,7 @@ type yamlGenerator struct {
 	yaml                *DbTable
 	gen                 *gen.Generator
 	generatedTable      map[string]string
-	customColumnSaveDir string
+	columnOptionSaveDir string
 }
 
 func NewYamlGenerator(path string) *yamlGenerator {
@@ -65,7 +65,7 @@ type Relate struct {
 func (self *yamlGenerator) UseGormGenerator(g *gen.Generator) *yamlGenerator {
 	self.gen = g
 
-	self.SetCustomColumnSaveDir(g.Config.ModelPkgPath + "/../accessor")
+	self.SetColumnOptionSaveDir(g.Config.ModelPkgPath + "/../accessor")
 
 	return self
 }
@@ -91,26 +91,26 @@ func (self *yamlGenerator) loadFromFile(path string) error {
 	return nil
 }
 
-func (self *yamlGenerator) SetCustomColumnSaveDir(customColumnSaveDir string) {
-	self.customColumnSaveDir = customColumnSaveDir
+func (self *yamlGenerator) SetColumnOptionSaveDir(columnOptionSaveDir string) {
+	self.columnOptionSaveDir = columnOptionSaveDir
 
-	if err := os.MkdirAll(self.customColumnSaveDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(self.columnOptionSaveDir, os.ModePerm); err != nil {
 		panic(err)
 	}
 }
 
-func (self *yamlGenerator) generateCustomColumn(column Column) error {
+func (self *yamlGenerator) generateColumnOption(column Column) error {
 	if column.Serializer == "" {
 		column.Serializer = "common"
 	}
-	customColumnTemplate, exists := template.CustomColumnTemplate[column.Serializer]
+	columnOptionTemplate, exists := template.ColumnOptionTemplate[column.Serializer]
 	if !exists {
 		return errors.New("serializer type not support")
 	}
-	customColumnTemplate = strings.Replace(customColumnTemplate, "{{Package}}", strings.TrimRight(path.Base(self.customColumnSaveDir), "/"), 1)
-	customColumnTemplate = strings.Replace(customColumnTemplate, "{{CustomStructName}}", column.Type, -1)
+	columnOptionTemplate = strings.Replace(columnOptionTemplate, "{{Package}}", strings.TrimRight(path.Base(self.columnOptionSaveDir), "/"), 1)
+	columnOptionTemplate = strings.Replace(columnOptionTemplate, "{{OptionStructName}}", column.Type, -1)
 
-	return os.WriteFile(self.customColumnSaveDir+"/"+schema.NamingStrategy{}.TableName(column.Type)+".gen.go", []byte(customColumnTemplate), 0640)
+	return os.WriteFile(self.columnOptionSaveDir+"/"+schema.NamingStrategy{}.TableName(column.Type)+".gen.go", []byte(columnOptionTemplate), 0640)
 }
 
 func (self *yamlGenerator) getTableRelateOpt(table Table) []gen.ModelOpt {
@@ -163,12 +163,12 @@ func (self *yamlGenerator) getTableColumnOpt(table Table) ([]gen.ModelOpt, bool)
 	for name, column := range table.Column {
 		if column.Type != "" {
 			if strings.Contains(strings.ToLower(column.Type), "option") {
-				err := self.generateCustomColumn(column)
+				err := self.generateColumnOption(column)
 				if err != nil {
 					panic(err)
 				}
 				hasOption = true
-				opt = append(opt, gen.FieldType(name, strings.TrimRight(path.Base(self.customColumnSaveDir), "/")+"."+column.Type))
+				opt = append(opt, gen.FieldType(name, strings.TrimRight(path.Base(self.columnOptionSaveDir), "/")+"."+column.Type))
 			} else {
 				opt = append(opt, gen.FieldType(name, column.Type))
 			}
@@ -233,7 +233,7 @@ func (self *yamlGenerator) generateFromTable(table Table) {
 	if hasOption {
 		pkgs, err := packages.Load(&packages.Config{
 			Mode: packages.NeedName,
-			Dir:  self.customColumnSaveDir,
+			Dir:  self.columnOptionSaveDir,
 		})
 		if err != nil {
 			panic(err)
