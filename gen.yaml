@@ -11,8 +11,6 @@ table:
   - table: club
     column:
       content:
-        rename: ContentNew
-        comment: 内容
         tag:
           gorm:
             default: "''"

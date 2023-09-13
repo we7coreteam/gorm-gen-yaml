@@ -15,6 +15,19 @@ import (
 	"strings"
 )
 
+var tableWithMethodMap = make(map[string][]interface{})
+
+func WithMethod(tableName string, method interface{}) {
+	var methods []interface{}
+	if _, exists := tableWithMethodMap[tableName]; !exists {
+		methods = make([]interface{}, 0)
+	} else {
+		methods = tableWithMethodMap[tableName]
+	}
+	methods = append(methods, method)
+	tableWithMethodMap[tableName] = methods
+}
+
 type yamlGenerator struct {
 	yaml                *DbTable
 	gen                 *gen.Generator
@@ -210,6 +223,21 @@ func (self *yamlGenerator) getTableColumnOpt(table Table) ([]gen.ModelOpt, bool)
 	return opt, hasOption
 }
 
+func (self *yamlGenerator) getTableMethodOpt(table Table) []gen.ModelOpt {
+	if methods, exists := tableWithMethodMap[table.Name]; exists {
+		opt := make([]gen.ModelOpt, len(methods))
+		i := 0
+		for _, method := range methods {
+			opt[i] = gen.WithMethod(method)
+			i++
+		}
+
+		return opt
+	}
+
+	return nil
+}
+
 func (self *yamlGenerator) generateFromTable(table Table) {
 	if _, exists := self.generatedTable[table.Name]; exists {
 		return
@@ -228,7 +256,9 @@ func (self *yamlGenerator) generateFromTable(table Table) {
 	//找到所有relate,生成模型
 	relateOpt := self.getTableRelateOpt(table)
 	columnOpt, hasOption := self.getTableColumnOpt(table)
+	methodOpt := self.getTableMethodOpt(table)
 	opt := append(relateOpt, columnOpt...)
+	opt = append(opt, methodOpt...)
 	relateMate := self.gen.GenerateModel(table.Name, opt...)
 	if hasOption {
 		pkgs, err := packages.Load(&packages.Config{
