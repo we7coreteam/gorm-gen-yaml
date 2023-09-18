@@ -34,11 +34,12 @@ func NewYamlGenerator(path string) *yamlGenerator {
 }
 
 type DbTable struct {
-	Table    []Table `yaml:"table"`
-	TableMap map[string]Table
+	Table    []Table `yaml:"relation"`
+	TableMap map[string]*Table
 }
 
 type Table struct {
+	Flag   uint
 	Name   string            `yaml:"table"`
 	Relate []Relate          `yaml:"relate"`
 	Column map[string]Column `yaml:"column"`
@@ -82,10 +83,11 @@ func (self *yamlGenerator) loadFromFile(path string) error {
 		return err
 	}
 	fmt.Printf("%+v \n", self.yaml)
-	self.yaml.TableMap = make(map[string]Table)
+	self.yaml.TableMap = make(map[string]*Table)
 
 	for _, table := range self.yaml.Table {
-		self.yaml.TableMap[table.Name] = table
+		ttable := table
+		self.yaml.TableMap[table.Name] = &ttable
 	}
 
 	return nil
@@ -113,7 +115,7 @@ func (self *yamlGenerator) generateColumnOption(column Column) error {
 	return os.WriteFile(self.columnOptionSaveDir+"/"+schema.NamingStrategy{}.TableName(column.Type)+".gen.go", []byte(columnOptionTemplate), 0640)
 }
 
-func (self *yamlGenerator) getTableRelateOpt(table Table) []gen.ModelOpt {
+func (self *yamlGenerator) getTableRelateOpt(table *Table) []gen.ModelOpt {
 	opt := make([]gen.ModelOpt, len(table.Relate))
 	for i, table := range table.Relate {
 		relatePointer := false
@@ -156,7 +158,7 @@ func (self *yamlGenerator) getTableRelateOpt(table Table) []gen.ModelOpt {
 	return opt
 }
 
-func (self *yamlGenerator) getTableColumnOpt(table Table) ([]gen.ModelOpt, bool) {
+func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool) {
 	opt := make([]gen.ModelOpt, 0)
 	//找到column生成自定义column类型
 	hasOption := false
@@ -210,13 +212,14 @@ func (self *yamlGenerator) getTableColumnOpt(table Table) ([]gen.ModelOpt, bool)
 	return opt, hasOption
 }
 
-func (self *yamlGenerator) generateFromTable(table Table) {
+func (self *yamlGenerator) generateFromTable(table *Table) {
 	if _, exists := self.generatedTable[table.Name]; exists {
 		return
 	}
+	table.Flag = 1
 
 	for _, relate := range table.Relate {
-		if tTable, exists := self.yaml.TableMap[relate.Table]; exists {
+		if tTable, exists := self.yaml.TableMap[relate.Table]; exists && tTable.Flag == 0 {
 			self.generateFromTable(tTable)
 		} else {
 			relateMate := self.gen.GenerateModel(relate.Table)
@@ -240,12 +243,15 @@ func (self *yamlGenerator) generateFromTable(table Table) {
 		}
 		relateMate.ImportPkgPaths = append(relateMate.ImportPkgPaths, "\""+pkgs[0].PkgPath+"\"")
 	}
+	if _, exists := self.generatedTable[table.Name]; exists {
+		delete(self.gen.Data, self.generatedTable[table.Name])
+	}
 	self.gen.ApplyBasic(relateMate)
 	self.generatedTable[table.Name] = relateMate.ModelStructName
 }
 
 func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) {
-	for _, table := range self.yaml.Table {
+	for _, table := range self.yaml.TableMap {
 		self.generateFromTable(table)
 	}
 }

@@ -1,4 +1,4 @@
-table:
+relation:
   - table: declaration_log
     relate:
       - table: club
