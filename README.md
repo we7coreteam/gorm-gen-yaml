@@ -25,3 +25,7 @@ yamlgen.NewYamlGenerator("./gen.yaml").UseGormGenerator(g).Generate(fieldOpts...
 //g.GenerateModel(tableName)
 g.Execute()
 ```
+
+# 测试
+
+运行 gen_test.go 文件中的 TestParse 方法。生成完成 dao 和 model 文件后，可以删除 TestSelect 注释进行测试
