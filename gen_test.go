@@ -2,14 +2,16 @@ package yamlgen
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/we7coreteam/gorm-gen-yaml/output/dao"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gen"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 	"log"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -27,10 +29,10 @@ func init() {
 			Colorful:                  false,       // Disable color
 		},
 	)
-	dsn := "root:123456@tcp(172.16.1.198:3306)/paidashen?charset=utf8mb4&parseTime=True&loc=Local"
-	db, _ = gorm.Open(mysql.Open(dsn), &gorm.Config{
+	path, _ := filepath.Abs("./test.db")
+	db, _ = gorm.Open(sqlite.Open(path), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
-			TablePrefix:   "bd_",
+			TablePrefix:   "ims_",
 			SingularTable: true,
 		},
 		Logger: newLogger,
@@ -66,39 +68,18 @@ func TestParse(t *testing.T) {
 
 func TestSelect(t *testing.T) {
 	dao.SetDefault(db)
-	row, _ := dao.Q.DeclarationLog.Preload(dao.Q.DeclarationLog.Club, dao.Q.DeclarationLog.Club.ClubUser).Last()
-	fmt.Printf("%+v", row.Club.ClubUser)
+	tester := assert.New(t)
+	row, _ := dao.Q.Club.Preload(dao.Q.Club.User, dao.Q.Club.ClubUser).Last()
+	fmt.Printf("%v \n", row)
+	fmt.Printf("%v \n", row.User)
+	tester.Equal(row.Name, "测试俱乐部")
+	tester.Equal(row.ClubUser[0].ClubID, row.ID)
+	tester.Equal(row.User.ID, row.ApplicantID)
 
-	row1, _ := dao.Q.Club.Preload(dao.Club.User).Where(dao.Club.ID.In(45)).First()
-	fmt.Printf("%+v \n", row1)
-	fmt.Printf("%+v \n", row1.User)
-}
-
-func TestSql(t *testing.T) {
-	result := map[string]interface{}{}
-	db.Table("bd_user").Take(&result)
-	fmt.Printf("%+v \n", result)
-
-	type User struct {
-		ID       int32  `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-		Nickname string `gorm:"column:nickname;not null" json:"nickname"` // 昵称
+	list, _ := dao.Q.Formula.Preload(dao.Q.Formula.Tag).Find()
+	for _, formula := range list {
+		fmt.Printf("%v \n", formula)
 	}
-
-	var resultUser User
-	db.First(&resultUser)
-	fmt.Printf("%+v \n", resultUser)
-
-	dao.SetDefault(db)
-	resultDao, _ := dao.Q.User.First()
-	fmt.Printf("%+v \n", resultDao)
-
-	resultDao1, _ := dao.Q.User.Preload(dao.Q.User.UserOauth).First()
-	fmt.Printf("%+v \n", resultDao1.UserOauth.Openid)
-
-	dUser := dao.Q.User
-	resultDao2, _ := dUser.Select(dUser.Mobile, dUser.Nickname).Where(dUser.ID.In(1, 20, 30)).Find()
-	for _, user := range resultDao2 {
-		fmt.Printf("%+v \n", user)
-	}
-
+	tester.Equal(len(list[0].Tag), 3)
+	tester.Equal(len(list[1].Tag), 2)
 }

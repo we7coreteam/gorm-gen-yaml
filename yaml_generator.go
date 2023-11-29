@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/we7coreteam/gorm-gen-yaml/template"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"golang.org/x/tools/go/packages"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gen"
@@ -34,6 +36,7 @@ func NewYamlGenerator(path string) *yamlGenerator {
 }
 
 type DbTable struct {
+	Config   Config  `yaml:"config"`
 	Table    []Table `yaml:"relation"`
 	TableMap map[string]*Table
 }
@@ -61,6 +64,10 @@ type Relate struct {
 	JoinReferences string `yaml:"join_references"`
 	Many2many      string `yaml:"many_2_many"`
 	Type           string `yaml:"type"`
+}
+
+type Config struct {
+	TagJsonCamel string `yaml:"tag_json_camel"`
 }
 
 func (self *yamlGenerator) UseGormGenerator(g *gen.Generator) *yamlGenerator {
@@ -251,6 +258,17 @@ func (self *yamlGenerator) generateFromTable(table *Table) {
 }
 
 func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) {
+	if self.yaml.Config.TagJsonCamel != "" {
+		caser := cases.Title(language.Und)
+		self.gen.WithJSONTagNameStrategy(func(columnName string) (tagContent string) {
+			new := strings.ReplaceAll(caser.String(strings.ReplaceAll(columnName, "_", " ")), " ", "")
+			if self.yaml.Config.TagJsonCamel == "upper" {
+				return new
+			} else {
+				return strings.ToLower(string(new[0])) + new[1:]
+			}
+		})
+	}
 	for _, table := range self.yaml.TableMap {
 		self.generateFromTable(table)
 	}

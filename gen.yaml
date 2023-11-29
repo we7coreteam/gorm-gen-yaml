@@ -1,13 +1,6 @@
+config:
+  tag_json_camel: lower # lower 首字母小写驼峰，upper 首字母大写驼峰
 relation:
-  - table: declaration_log
-    relate:
-      - table: club
-        foreign_key: club_id
-        type: has_one
-      - table: declaration_gift
-        foreign_key: declaration_gift_id
-        references: id
-        type: has_one
   - table: club
     column:
       content:
@@ -19,10 +12,21 @@ relation:
         foreign_key: club_id
         type: has_many
       - table: user
-        foreign_key: applicant_id
+        references: applicant_id
+        foreign_key: id
         type: belongs_to
   - table: user
     relate:
       - table: user_oauth
         foreign_key: user_id
         type: has_one
+  - table: tag_formula
+  - table: formula
+    relate:
+      - table: tag
+        many_2_many: tag_formula
+        foreign_key: id
+        join_foreign_key: formula_id
+        join_references: tag_id
+        references: id
+        type: many_many
