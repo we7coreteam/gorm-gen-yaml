@@ -8,30 +8,7 @@ output 目录为根据下面配置生成出的文件。
 
 # 配置
 
-```yaml
-relation:
-  - table: declaration_log  
-    relate:
-      - table: club # 关联的表名
-        foreign_key: club_id # 关联的外键
-        type: has_one # 关联类型 has_one has_many many_many belongs_to
-      - table: declaration_gift
-        foreign_key: declaration_gift_id
-        type: has_one
-  - table: club
-    relate:
-      - table: club_user
-        foreign_key: club_id
-        type: has_many
-      - table: user
-        foreign_key: applicant_id
-        type: belongs_to
-  - table: user
-    relate:
-      - table: user_oauth
-        foreign_key: user_id
-        type: has_one
-```
+<a href="https://github.com/we7coreteam/gorm-gen-yaml/blob/main/gen.yaml">查看配置文件</a>
 
 # 调用
 
