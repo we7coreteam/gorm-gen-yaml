@@ -7,6 +7,8 @@ relation:
         tag:
           gorm:
             default: "''"
+    # club_user 表中的 club_id 对应 club 表中的 id
+    # club 表中的 applicant_id 对应 user 表中的 id
     relate:
       - table: club_user
         foreign_key: club_id
@@ -22,6 +24,9 @@ relation:
         type: has_one
   - table: tag_formula
   - table: formula
+    # formula表关联tag表，多对多关系，中间表为 tag_formula表。
+    # formula表中的id对应tag_formula中的formula_id
+    # tag表中的id对应 tag_formula表中的 tag_id
     relate:
       - table: tag
         many_2_many: tag_formula
