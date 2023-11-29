@@ -1,9 +1,6 @@
 package yamlgen
 
 import (
-	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/we7coreteam/gorm-gen-yaml/output/dao"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gen"
 	"gorm.io/gorm"
@@ -66,20 +63,21 @@ func TestParse(t *testing.T) {
 	g.Execute()
 }
 
+// 生成完成 dao & model 文件时，删掉注释测试
 func TestSelect(t *testing.T) {
-	dao.SetDefault(db)
-	tester := assert.New(t)
-	row, _ := dao.Q.Club.Preload(dao.Q.Club.User, dao.Q.Club.ClubUser).Last()
-	fmt.Printf("%v \n", row)
-	fmt.Printf("%v \n", row.User)
-	tester.Equal(row.Name, "测试俱乐部")
-	tester.Equal(row.ClubUser[0].ClubID, row.ID)
-	tester.Equal(row.User.ID, row.ApplicantID)
-
-	list, _ := dao.Q.Formula.Preload(dao.Q.Formula.Tag).Find()
-	for _, formula := range list {
-		fmt.Printf("%v \n", formula)
-	}
-	tester.Equal(len(list[0].Tag), 3)
-	tester.Equal(len(list[1].Tag), 2)
+	//	dao.SetDefault(db)
+	//	tester := assert.New(t)
+	//	row, _ := dao.Q.Club.Preload(dao.Q.Club.User, dao.Q.Club.ClubUser).Last()
+	//	fmt.Printf("%v \n", row)
+	//	fmt.Printf("%v \n", row.User)
+	//	tester.Equal(row.Name, "测试俱乐部")
+	//	tester.Equal(row.ClubUser[0].ClubID, row.ID)
+	//	tester.Equal(row.User.ID, row.ApplicantID)
+	//
+	//	list, _ := dao.Q.Formula.Preload(dao.Q.Formula.Tag).Find()
+	//	for _, formula := range list {
+	//		fmt.Printf("%v \n", formula)
+	//	}
+	//	tester.Equal(len(list[0].Tag), 3)
+	//	tester.Equal(len(list[1].Tag), 2)
 }
