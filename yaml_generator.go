@@ -174,7 +174,15 @@ func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool
 		if column.Type != "" {
 			if strings.Contains(strings.ToLower(column.Type), "option") {
 				if column.Serializer == "json" || column.Serializer == "gob" || column.Serializer == "unixtime" {
-					column.Tag["gorm"]["serializer"] = column.Serializer
+					if column.Tag == nil {
+						column.Tag = map[string]map[string]string{
+							"gorm": {
+								"serializer": column.Serializer,
+							},
+						}
+					} else {
+						column.Tag["gorm"]["serializer"] = column.Serializer
+					}
 					// 判断有没有在 accessor 目录下定义该结构，如果没有则报错
 					structDefinePath, _ := filepath.Abs(fmt.Sprintf("%s/%s.go", self.columnOptionSaveDir, CamelCaseToUnderscore(column.Type)))
 					_, err := os.Stat(structDefinePath)
