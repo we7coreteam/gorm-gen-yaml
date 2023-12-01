@@ -3,6 +3,10 @@ config:
 relation:
   - table: club
     column:
+      # 定义 club 表中的 content 字段为 json 类型
+      # 查询和插入时会自动做 json 数据解析
+      # 指定 ClubContentOption 类型，必须事先定义在 accessor(与 dao 同级)目录中
+      # 并且该类型必须可外部访问
       content:
         serializer: json
         type: ClubContentOption
