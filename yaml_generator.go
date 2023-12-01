@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -172,12 +173,24 @@ func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool
 	for name, column := range table.Column {
 		if column.Type != "" {
 			if strings.Contains(strings.ToLower(column.Type), "option") {
-				err := self.generateColumnOption(column)
-				if err != nil {
-					panic(err)
+				if column.Serializer == "json" || column.Serializer == "gob" || column.Serializer == "unixtime" {
+					column.Tag["gorm"]["serializer"] = column.Serializer
+					// 判断有没有在 accessor 目录下定义该结构，如果没有则报错
+					structDefinePath, _ := filepath.Abs(fmt.Sprintf("%s/%s.go", self.columnOptionSaveDir, CamelCaseToUnderscore(column.Type)))
+					_, err := os.Stat(structDefinePath)
+					if os.IsNotExist(err) {
+						panic(fmt.Sprintf("Please define the structure in the %s directory first", structDefinePath))
+					}
+
+				} else {
+					// 自定义生成 Scan Value
+					err := self.generateColumnOption(column)
+					if err != nil {
+						panic(err)
+					}
 				}
 				hasOption = true
-				opt = append(opt, gen.FieldType(name, strings.TrimRight(path.Base(self.columnOptionSaveDir), "/")+"."+column.Type))
+				opt = append(opt, gen.FieldType(name, "*"+strings.TrimRight(path.Base(self.columnOptionSaveDir), "/")+"."+column.Type))
 			} else {
 				opt = append(opt, gen.FieldType(name, column.Type))
 			}

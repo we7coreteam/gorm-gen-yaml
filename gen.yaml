@@ -4,6 +4,8 @@ relation:
   - table: club
     column:
       content:
+        serializer: json
+        type: ClubContentOption
         tag:
           gorm:
             default: "''"
