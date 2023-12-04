@@ -13,6 +13,9 @@ relation:
         tag:
           gorm:
             default: "''"
+      api_info:
+        type: ClubApiInfoOption
+
     # club_user 表中的 club_id 对应 club 表中的 id
     # club 表中的 applicant_id 对应 user 表中的 id
     relate:

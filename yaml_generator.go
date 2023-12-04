@@ -4,17 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/we7coreteam/gorm-gen-yaml/template"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"golang.org/x/tools/go/packages"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gen"
 	"gorm.io/gen/field"
-	"gorm.io/gorm/schema"
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 )
 
@@ -47,6 +43,7 @@ type Table struct {
 	Name   string            `yaml:"table"`
 	Relate []Relate          `yaml:"relate"`
 	Column map[string]Column `yaml:"column"`
+	Props  map[string]Column `yaml:"props"`
 }
 
 type Column struct {
@@ -110,17 +107,27 @@ func (self *yamlGenerator) SetColumnOptionSaveDir(columnOptionSaveDir string) {
 }
 
 func (self *yamlGenerator) generateColumnOption(column Column) error {
-	if column.Serializer == "" {
-		column.Serializer = "common"
+	var columnOptionTemplate string
+	var exists bool
+
+	if column.Serializer == "json" || column.Serializer == "gob" || column.Serializer == "unixtime" {
+		columnOptionTemplate, exists = template.ColumnOptionTemplate["json"]
+	} else {
+		columnOptionTemplate, exists = template.ColumnOptionTemplate["common"]
 	}
-	columnOptionTemplate, exists := template.ColumnOptionTemplate[column.Serializer]
+
 	if !exists {
 		return errors.New("serializer type not support")
 	}
 	columnOptionTemplate = strings.Replace(columnOptionTemplate, "{{Package}}", strings.TrimRight(path.Base(self.columnOptionSaveDir), "/"), 1)
 	columnOptionTemplate = strings.Replace(columnOptionTemplate, "{{OptionStructName}}", column.Type, -1)
 
-	return os.WriteFile(self.columnOptionSaveDir+"/"+schema.NamingStrategy{}.TableName(column.Type)+".gen.go", []byte(columnOptionTemplate), 0640)
+	path := self.columnOptionSaveDir + "/" + CamelCaseToUnderscore(column.Type) + ".go"
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return os.WriteFile(path, []byte(columnOptionTemplate), 0640)
+	}
+	return nil
 }
 
 func (self *yamlGenerator) getTableRelateOpt(table *Table) []gen.ModelOpt {
@@ -183,13 +190,11 @@ func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool
 					} else {
 						column.Tag["gorm"]["serializer"] = column.Serializer
 					}
-					// 判断有没有在 accessor 目录下定义该结构，如果没有则报错
-					structDefinePath, _ := filepath.Abs(fmt.Sprintf("%s/%s.go", self.columnOptionSaveDir, CamelCaseToUnderscore(column.Type)))
-					_, err := os.Stat(structDefinePath)
-					if os.IsNotExist(err) {
-						panic(fmt.Sprintf("Please define the structure in the %s directory first", structDefinePath))
+					// 生成对应的类型文件
+					err := self.generateColumnOption(column)
+					if err != nil {
+						panic(err)
 					}
-
 				} else {
 					// 自定义生成 Scan Value
 					err := self.generateColumnOption(column)
@@ -237,6 +242,18 @@ func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool
 		}
 	}
 
+	for name, column := range table.Props {
+		tag := field.Tag{}
+		tag.Set(field.TagKeyJson, UnderscoreToCamelCase(name, self.yaml.Config.TagJsonCamel == "upper"))
+		opt = append(opt, gen.FieldNew(UnderscoreToCamelCase(name, true), "*"+strings.TrimRight(path.Base(self.columnOptionSaveDir), "/")+"."+column.Type, tag))
+		// 自定义生成 Scan Value
+		column.Serializer = "common"
+		err := self.generateColumnOption(column)
+		if err != nil {
+			panic(err)
+		}
+		hasOption = true
+	}
 	return opt, hasOption
 }
 
@@ -280,14 +297,8 @@ func (self *yamlGenerator) generateFromTable(table *Table) {
 
 func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) {
 	if self.yaml.Config.TagJsonCamel != "" {
-		caser := cases.Title(language.Und)
 		self.gen.WithJSONTagNameStrategy(func(columnName string) (tagContent string) {
-			new := strings.ReplaceAll(caser.String(strings.ReplaceAll(columnName, "_", " ")), " ", "")
-			if self.yaml.Config.TagJsonCamel == "upper" {
-				return new
-			} else {
-				return strings.ToLower(string(new[0])) + new[1:]
-			}
+			return UnderscoreToCamelCase(columnName, self.yaml.Config.TagJsonCamel == "upper")
 		})
 	}
 	for _, table := range self.yaml.TableMap {
