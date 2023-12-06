@@ -13,6 +13,7 @@ relation:
         tag:
           gorm:
             default: "''"
+      # 指定自定义类型字段，需要自己实现 scan 和 value 方法
       api_info:
         type: ClubApiInfoOption
 
