@@ -87,7 +87,6 @@ func (self *yamlGenerator) loadFromFile(path string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%+v \n", self.yaml)
 	self.yaml.TableMap = make(map[string]*Table)
 
 	for _, table := range self.yaml.Table {
