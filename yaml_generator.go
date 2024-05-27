@@ -264,7 +264,7 @@ func (self *yamlGenerator) generateFromTable(table *Table, opt ...gen.ModelOpt) 
 
 	for _, relate := range table.Relate {
 		if tTable, exists := self.yaml.TableMap[relate.Table]; exists && tTable.Flag == 0 {
-			self.generateFromTable(tTable)
+			self.generateFromTable(tTable, opt...)
 		} else {
 			relateMate := self.gen.GenerateModel(relate.Table)
 			self.gen.ApplyBasic(relateMate)
