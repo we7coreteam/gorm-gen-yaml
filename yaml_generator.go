@@ -256,7 +256,7 @@ func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool
 	return opt, hasOption
 }
 
-func (self *yamlGenerator) generateFromTable(table *Table) {
+func (self *yamlGenerator) generateFromTable(table *Table, opt ...gen.ModelOpt) {
 	if _, exists := self.generatedTable[table.Name]; exists {
 		return
 	}
@@ -275,7 +275,11 @@ func (self *yamlGenerator) generateFromTable(table *Table) {
 	//找到所有relate,生成模型
 	relateOpt := self.getTableRelateOpt(table)
 	columnOpt, hasOption := self.getTableColumnOpt(table)
-	opt := append(relateOpt, columnOpt...)
+	if opt == nil {
+		opt = make([]gen.ModelOpt, 0)
+	}
+	opt = append(opt, relateOpt...)
+	opt = append(opt, columnOpt...)
 	relateMate := self.gen.GenerateModel(table.Name, opt...)
 	if hasOption {
 		pkgs, err := packages.Load(&packages.Config{
@@ -301,6 +305,6 @@ func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) {
 		})
 	}
 	for _, table := range self.yaml.TableMap {
-		self.generateFromTable(table)
+		self.generateFromTable(table, opt...)
 	}
 }
