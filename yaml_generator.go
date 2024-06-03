@@ -71,7 +71,7 @@ type Config struct {
 func (self *yamlGenerator) UseGormGenerator(g *gen.Generator) *yamlGenerator {
 	self.gen = g
 
-	self.SetColumnOptionSaveDir(g.Config.ModelPkgPath + "/../accessor")
+	self.SetColumnOptionSaveDir(g.Config.OutPath + "/../accessor")
 
 	return self
 }
