@@ -34,4 +34,4 @@ g.Execute()
 
 QQ群：364768550
 
-![qrcode_1717390976309.jpg](https://s2.loli.net/2024/06/03/uMjYwCWmVPaRSUt.png =300x)
+<img src="https://s2.loli.net/2024/06/03/uMjYwCWmVPaRSUt.png" width="300" >
