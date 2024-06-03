@@ -29,3 +29,7 @@ g.Execute()
 # 测试
 
 运行 gen_test.go 文件中的 TestParse 方法。生成完成 dao 和 model 文件后，可以删除 TestSelect 注释进行测试
+
+# 交流群
+
+![qrcode_1717390976309.jpg](https://s2.loli.net/2024/06/03/uMjYwCWmVPaRSUt.png)
