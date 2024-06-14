@@ -45,3 +45,7 @@ relation:
         join_references: tag_id
         references: id
         type: many_many
+  - table: club_user
+    column:
+      delete_time:
+        type: gorm.DeletedAt

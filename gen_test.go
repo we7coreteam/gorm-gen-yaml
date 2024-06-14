@@ -80,4 +80,10 @@ func TestSelect(t *testing.T) {
 	//	}
 	//	tester.Equal(len(list[0].Tag), 3)
 	//	tester.Equal(len(list[1].Tag), 2)
+	//testDeleteClubUser := &entity.ClubUser{
+	//	ClubID: 1,
+	//	Name:   "测试删除",
+	//}
+	//dao.ClubUser.Create(testDeleteClubUser)
+	//dao.ClubUser.Where(dao.ClubUser.ID.Eq(testDeleteClubUser.ID)).Delete()
 }
