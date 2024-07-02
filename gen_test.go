@@ -38,12 +38,12 @@ func init() {
 
 func TestParse(t *testing.T) {
 	os.RemoveAll("./output/dao")
-	os.RemoveAll("./output/entity")
+	os.RemoveAll("entity")
 
 	g := gen.NewGenerator(gen.Config{
 		OutPath:      "./output/dao",
 		Mode:         gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // generate mode
-		ModelPkgPath: "./output/entity",
+		ModelPkgPath: "entity",
 	})
 	g.UseDB(db)
 	fieldOpts := []gen.ModelOpt{}

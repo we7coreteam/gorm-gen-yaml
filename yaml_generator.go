@@ -14,15 +14,15 @@ import (
 	"strings"
 )
 
-type yamlGenerator struct {
+type YamlGenerator struct {
 	yaml                *DbTable
 	gen                 *gen.Generator
 	generatedTable      map[string]string
 	columnOptionSaveDir string
 }
 
-func NewYamlGenerator(path string) *yamlGenerator {
-	obj := &yamlGenerator{}
+func NewYamlGenerator(path string) *YamlGenerator {
+	obj := &YamlGenerator{}
 	err := obj.loadFromFile(path)
 	if err != nil {
 		panic(err)
@@ -68,44 +68,44 @@ type Config struct {
 	TagJsonCamel string `yaml:"tag_json_camel"`
 }
 
-func (self *yamlGenerator) UseGormGenerator(g *gen.Generator) *yamlGenerator {
-	self.gen = g
+func (y *YamlGenerator) UseGormGenerator(g *gen.Generator) *YamlGenerator {
+	y.gen = g
 
-	self.SetColumnOptionSaveDir(g.Config.ModelPkgPath + "/../accessor")
+	y.SetColumnOptionSaveDir(g.Config.OutPath + "/../accessor")
 
-	return self
+	return y
 }
 
-func (self *yamlGenerator) loadFromFile(path string) error {
+func (y *YamlGenerator) loadFromFile(path string) error {
 	file, err := os.OpenFile(path, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		return errors.New(fmt.Sprintf("%s file not found", path))
 	}
 	content, _ := io.ReadAll(file)
-	self.yaml = &DbTable{}
-	err = yaml.Unmarshal(content, self.yaml)
+	y.yaml = &DbTable{}
+	err = yaml.Unmarshal(content, y.yaml)
 	if err != nil {
 		return err
 	}
-	self.yaml.TableMap = make(map[string]*Table)
+	y.yaml.TableMap = make(map[string]*Table)
 
-	for _, table := range self.yaml.Table {
-		ttable := table
-		self.yaml.TableMap[table.Name] = &ttable
+	for _, table := range y.yaml.Table {
+		t := table
+		y.yaml.TableMap[table.Name] = &t
 	}
 
 	return nil
 }
 
-func (self *yamlGenerator) SetColumnOptionSaveDir(columnOptionSaveDir string) {
-	self.columnOptionSaveDir = columnOptionSaveDir
+func (y *YamlGenerator) SetColumnOptionSaveDir(columnOptionSaveDir string) {
+	y.columnOptionSaveDir = columnOptionSaveDir
 
-	if err := os.MkdirAll(self.columnOptionSaveDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(y.columnOptionSaveDir, os.ModePerm); err != nil {
 		panic(err)
 	}
 }
 
-func (self *yamlGenerator) generateColumnOption(column Column) error {
+func (y *YamlGenerator) generateColumnOption(column Column) error {
 	var columnOptionTemplate string
 	var exists bool
 
@@ -118,18 +118,18 @@ func (self *yamlGenerator) generateColumnOption(column Column) error {
 	if !exists {
 		return errors.New("serializer type not support")
 	}
-	columnOptionTemplate = strings.Replace(columnOptionTemplate, "{{Package}}", strings.TrimRight(path.Base(self.columnOptionSaveDir), "/"), 1)
+	columnOptionTemplate = strings.Replace(columnOptionTemplate, "{{Package}}", strings.TrimRight(path.Base(y.columnOptionSaveDir), "/"), 1)
 	columnOptionTemplate = strings.Replace(columnOptionTemplate, "{{OptionStructName}}", column.Type, -1)
 
-	path := self.columnOptionSaveDir + "/" + CamelCaseToUnderscore(column.Type) + ".go"
-	_, err := os.Stat(path)
+	p := y.columnOptionSaveDir + "/" + CamelCaseToUnderscore(column.Type) + ".go"
+	_, err := os.Stat(p)
 	if os.IsNotExist(err) {
-		return os.WriteFile(path, []byte(columnOptionTemplate), 0640)
+		return os.WriteFile(p, []byte(columnOptionTemplate), 0640)
 	}
 	return nil
 }
 
-func (self *yamlGenerator) getTableRelateOpt(table *Table) []gen.ModelOpt {
+func (y *YamlGenerator) getTableRelateOpt(table *Table) []gen.ModelOpt {
 	opt := make([]gen.ModelOpt, len(table.Relate))
 	for i, table := range table.Relate {
 		relatePointer := false
@@ -163,7 +163,7 @@ func (self *yamlGenerator) getTableRelateOpt(table *Table) []gen.ModelOpt {
 		if table.Many2many != "" {
 			relateConfig.Append("many2many", table.Many2many)
 		}
-		opt[i] = gen.FieldRelate(fieldType, self.generatedTable[table.Table], self.gen.Data[self.generatedTable[table.Table]].QueryStructMeta, &field.RelateConfig{
+		opt[i] = gen.FieldRelate(fieldType, y.generatedTable[table.Table], y.gen.Data[y.generatedTable[table.Table]].QueryStructMeta, &field.RelateConfig{
 			GORMTag:       relateConfig,
 			RelatePointer: relatePointer,
 		})
@@ -172,7 +172,7 @@ func (self *yamlGenerator) getTableRelateOpt(table *Table) []gen.ModelOpt {
 	return opt
 }
 
-func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool) {
+func (y *YamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool) {
 	opt := make([]gen.ModelOpt, 0)
 	//找到column生成自定义column类型
 	hasOption := false
@@ -190,19 +190,19 @@ func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool
 						column.Tag["gorm"]["serializer"] = column.Serializer
 					}
 					// 生成对应的类型文件
-					err := self.generateColumnOption(column)
+					err := y.generateColumnOption(column)
 					if err != nil {
 						panic(err)
 					}
 				} else {
 					// 自定义生成 Scan Value
-					err := self.generateColumnOption(column)
+					err := y.generateColumnOption(column)
 					if err != nil {
 						panic(err)
 					}
 				}
 				hasOption = true
-				opt = append(opt, gen.FieldType(name, "*"+strings.TrimRight(path.Base(self.columnOptionSaveDir), "/")+"."+column.Type))
+				opt = append(opt, gen.FieldType(name, "*"+strings.TrimRight(path.Base(y.columnOptionSaveDir), "/")+"."+column.Type))
 			} else {
 				opt = append(opt, gen.FieldType(name, column.Type))
 			}
@@ -243,11 +243,11 @@ func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool
 
 	for name, column := range table.Props {
 		tag := field.Tag{}
-		tag.Set(field.TagKeyJson, UnderscoreToCamelCase(name, self.yaml.Config.TagJsonCamel == "upper"))
-		opt = append(opt, gen.FieldNew(UnderscoreToCamelCase(name, true), "*"+strings.TrimRight(path.Base(self.columnOptionSaveDir), "/")+"."+column.Type, tag))
+		tag.Set(field.TagKeyJson, UnderscoreToCamelCase(name, y.yaml.Config.TagJsonCamel == "upper"))
+		opt = append(opt, gen.FieldNew(UnderscoreToCamelCase(name, true), "*"+strings.TrimRight(path.Base(y.columnOptionSaveDir), "/")+"."+column.Type, tag))
 		// 自定义生成 Scan Value
 		column.Serializer = "common"
-		err := self.generateColumnOption(column)
+		err := y.generateColumnOption(column)
 		if err != nil {
 			panic(err)
 		}
@@ -256,55 +256,55 @@ func (self *yamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool
 	return opt, hasOption
 }
 
-func (self *yamlGenerator) generateFromTable(table *Table, opt ...gen.ModelOpt) {
-	if _, exists := self.generatedTable[table.Name]; exists {
+func (y *YamlGenerator) generateFromTable(table *Table, opt ...gen.ModelOpt) {
+	if _, exists := y.generatedTable[table.Name]; exists {
 		return
 	}
 	table.Flag = 1
 
 	for _, relate := range table.Relate {
-		if tTable, exists := self.yaml.TableMap[relate.Table]; exists && tTable.Flag == 0 {
-			self.generateFromTable(tTable, opt...)
+		if tTable, exists := y.yaml.TableMap[relate.Table]; exists && tTable.Flag == 0 {
+			y.generateFromTable(tTable, opt...)
 		} else {
-			relateMate := self.gen.GenerateModel(relate.Table, opt...)
-			self.gen.ApplyBasic(relateMate)
-			self.generatedTable[relate.Table] = relateMate.ModelStructName
+			relateMate := y.gen.GenerateModel(relate.Table, opt...)
+			y.gen.ApplyBasic(relateMate)
+			y.generatedTable[relate.Table] = relateMate.ModelStructName
 		}
 	}
 
 	//找到所有relate,生成模型
-	relateOpt := self.getTableRelateOpt(table)
-	columnOpt, hasOption := self.getTableColumnOpt(table)
+	relateOpt := y.getTableRelateOpt(table)
+	columnOpt, hasOption := y.getTableColumnOpt(table)
 	if opt == nil {
 		opt = make([]gen.ModelOpt, 0)
 	}
 	opt = append(opt, relateOpt...)
 	opt = append(opt, columnOpt...)
-	relateMate := self.gen.GenerateModel(table.Name, opt...)
+	relateMate := y.gen.GenerateModel(table.Name, opt...)
 	if hasOption {
 		pkgs, err := packages.Load(&packages.Config{
 			Mode: packages.NeedName,
-			Dir:  self.columnOptionSaveDir,
+			Dir:  y.columnOptionSaveDir,
 		})
 		if err != nil {
 			panic(err)
 		}
 		relateMate.ImportPkgPaths = append(relateMate.ImportPkgPaths, "\""+pkgs[0].PkgPath+"\"")
 	}
-	if _, exists := self.generatedTable[table.Name]; exists {
-		delete(self.gen.Data, self.generatedTable[table.Name])
+	if _, exists := y.generatedTable[table.Name]; exists {
+		delete(y.gen.Data, y.generatedTable[table.Name])
 	}
-	self.gen.ApplyBasic(relateMate)
-	self.generatedTable[table.Name] = relateMate.ModelStructName
+	y.gen.ApplyBasic(relateMate)
+	y.generatedTable[table.Name] = relateMate.ModelStructName
 }
 
-func (self *yamlGenerator) Generate(opt ...gen.ModelOpt) {
-	if self.yaml.Config.TagJsonCamel != "" {
-		self.gen.WithJSONTagNameStrategy(func(columnName string) (tagContent string) {
-			return UnderscoreToCamelCase(columnName, self.yaml.Config.TagJsonCamel == "upper")
+func (y *YamlGenerator) Generate(opt ...gen.ModelOpt) {
+	if y.yaml.Config.TagJsonCamel != "" {
+		y.gen.WithJSONTagNameStrategy(func(columnName string) (tagContent string) {
+			return UnderscoreToCamelCase(columnName, y.yaml.Config.TagJsonCamel == "upper")
 		})
 	}
-	for _, table := range self.yaml.TableMap {
-		self.generateFromTable(table, opt...)
+	for _, table := range y.yaml.TableMap {
+		y.generateFromTable(table, opt...)
 	}
 }

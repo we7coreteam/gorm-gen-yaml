@@ -16,7 +16,7 @@ output 目录为根据下面配置生成出的文件。
 g := gen.NewGenerator(gen.Config{
     OutPath:      "./output/dao",
     Mode:         gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // generate mode
-    ModelPkgPath: "./output/entity",
+    ModelPkgPath: "entity",
 })
 g.UseDB(db)
 fieldOpts := []gen.ModelOpt{}
