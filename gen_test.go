@@ -38,7 +38,7 @@ func init() {
 
 func TestParse(t *testing.T) {
 	os.RemoveAll("./output/dao")
-	os.RemoveAll("entity")
+	os.RemoveAll("./output/entity")
 
 	g := gen.NewGenerator(gen.Config{
 		OutPath:      "./output/dao",
