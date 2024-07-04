@@ -43,7 +43,7 @@ func TestParse(t *testing.T) {
 	g := gen.NewGenerator(gen.Config{
 		OutPath:      "./output/dao",
 		Mode:         gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // generate mode
-		ModelPkgPath: "./output/entity",
+		ModelPkgPath: "entity",
 	})
 	g.UseDB(db)
 	fieldOpts := []gen.ModelOpt{}
