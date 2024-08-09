@@ -240,14 +240,22 @@ func (y *YamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool) {
 	for name, column := range table.Props {
 		tag := field.Tag{}
 		tag.Set(field.TagKeyJson, UnderscoreToCamelCase(name, y.yaml.Config.TagJsonCamel == "upper"))
-		opt = append(opt, gen.FieldNew(UnderscoreToCamelCase(name, true), "*"+strings.TrimRight(path.Base(y.columnOptionSaveDir), "/")+"."+column.Type, tag))
-		// 自定义生成 Scan Value
-		column.Serializer = "common"
-		err := y.generateColumnOption(column)
-		if err != nil {
-			panic(err)
+		tag.Set(field.TagKeyGorm, "-")
+
+		columnType := column.Type
+		if strings.Contains(strings.ToLower(column.Type), "option") {
+			// 自定义生成 Scan Value
+			column.Serializer = "common"
+			err := y.generateColumnOption(column)
+			if err != nil {
+				panic(err)
+			}
+			hasOption = true
+			columnType = "*" + strings.TrimRight(path.Base(y.columnOptionSaveDir), "/") + "." + column.Type
 		}
-		hasOption = true
+
+		opt = append(opt, gen.FieldNew(UnderscoreToCamelCase(name, true), columnType, tag))
+
 	}
 	return opt, hasOption
 }
