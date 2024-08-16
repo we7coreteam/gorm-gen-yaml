@@ -52,6 +52,7 @@ type Column struct {
 	Tag        map[string]map[string]string `yaml:"tag"`
 	Comment    string                       `yaml:"comment"`
 	Rename     string                       `yaml:"rename"`
+	Json       string                       `yaml:"json"`
 }
 
 type Relate struct {
@@ -62,6 +63,7 @@ type Relate struct {
 	JoinReferences string `yaml:"join_references"`
 	Many2many      string `yaml:"many_2_many"`
 	Type           string `yaml:"type"`
+	JSONTag        string `yaml:"json"`
 }
 
 type Config struct {
@@ -166,6 +168,7 @@ func (y *YamlGenerator) getTableRelateOpt(table *Table) []gen.ModelOpt {
 		opt[i] = gen.FieldRelate(fieldType, y.generatedTable[table.Table], y.gen.Data[y.generatedTable[table.Table]].QueryStructMeta, &field.RelateConfig{
 			GORMTag:       relateConfig,
 			RelatePointer: relatePointer,
+			JSONTag:       table.JSONTag,
 		})
 	}
 
@@ -203,6 +206,10 @@ func (y *YamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool) {
 				opt = append(opt, gen.FieldType(name, column.Type))
 			}
 		}
+		if column.Json != "" {
+			opt = append(opt, gen.FieldJSONTag(name, column.Json))
+		}
+
 		if column.Tag != nil {
 			for tagType, tags := range column.Tag {
 				ttags := tags
@@ -235,11 +242,17 @@ func (y *YamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool) {
 		if column.Comment != "" {
 			opt = append(opt, gen.FieldComment(name, column.Comment))
 		}
+
 	}
 
 	for name, column := range table.Props {
 		tag := field.Tag{}
-		tag.Set(field.TagKeyJson, UnderscoreToCamelCase(name, y.yaml.Config.TagJsonCamel == "upper"))
+		if column.Json != "" {
+			tag.Set(field.TagKeyJson, column.Json)
+		} else {
+			tag.Set(field.TagKeyJson, UnderscoreToCamelCase(name, y.yaml.Config.TagJsonCamel == "upper")+",omitempty")
+		}
+
 		tag.Set(field.TagKeyGorm, "-")
 
 		columnType := column.Type
