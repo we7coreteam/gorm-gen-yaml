@@ -165,6 +165,11 @@ func (y *YamlGenerator) getTableRelateOpt(table *Table) []gen.ModelOpt {
 		if table.Many2many != "" {
 			relateConfig.Append("many2many", table.Many2many)
 		}
+
+		if table.JSONTag == "" {
+			table.JSONTag = NamingConversion(table.Table, y.yaml.Config.TagJsonCamel) + ",omitempty"
+		}
+
 		opt[i] = gen.FieldRelate(fieldType, y.generatedTable[table.Table], y.gen.Data[y.generatedTable[table.Table]].QueryStructMeta, &field.RelateConfig{
 			GORMTag:       relateConfig,
 			RelatePointer: relatePointer,
@@ -250,7 +255,7 @@ func (y *YamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool) {
 		if column.Json != "" {
 			tag.Set(field.TagKeyJson, column.Json)
 		} else {
-			tag.Set(field.TagKeyJson, UnderscoreToCamelCase(name, y.yaml.Config.TagJsonCamel == "upper")+",omitempty")
+			tag.Set(field.TagKeyJson, NamingConversion(name, y.yaml.Config.TagJsonCamel)+",omitempty")
 		}
 
 		tag.Set(field.TagKeyGorm, "-")
@@ -318,7 +323,7 @@ func (y *YamlGenerator) generateFromTable(table *Table, opt ...gen.ModelOpt) {
 func (y *YamlGenerator) Generate(opt ...gen.ModelOpt) {
 	if y.yaml.Config.TagJsonCamel != "" {
 		y.gen.WithJSONTagNameStrategy(func(columnName string) (tagContent string) {
-			return UnderscoreToCamelCase(columnName, y.yaml.Config.TagJsonCamel == "upper")
+			return NamingConversion(columnName, y.yaml.Config.TagJsonCamel)
 		})
 	}
 	for _, table := range y.yaml.TableMap {
