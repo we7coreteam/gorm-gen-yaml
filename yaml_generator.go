@@ -285,8 +285,10 @@ func (y *YamlGenerator) generateFromTable(table *Table, opt ...gen.ModelOpt) {
 	table.Flag = 1
 
 	for _, relate := range table.Relate {
-		if tTable, exists := y.yaml.TableMap[relate.Table]; exists && tTable.Flag == 0 {
-			y.generateFromTable(tTable, opt...)
+		if tTable, exists := y.yaml.TableMap[relate.Table]; exists {
+			if tTable.Flag == 0 {
+				y.generateFromTable(tTable, opt...)
+			}
 		} else {
 			relateMate := y.gen.GenerateModel(relate.Table, opt...)
 			y.gen.ApplyBasic(relateMate)
