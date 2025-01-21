@@ -33,3 +33,16 @@ func UnderscoreToCamelCase(name string, isUpper bool) string {
 		return strings.ToLower(string(newName[0])) + newName[1:]
 	}
 }
+
+func NamingConversion(name string, fType string) string {
+	if fType == "underline" {
+		return CamelCaseToUnderscore(name)
+	}
+
+	isUpper := false
+	if fType == "upper" {
+		isUpper = true
+	}
+
+	return UnderscoreToCamelCase(name, isUpper)
+}

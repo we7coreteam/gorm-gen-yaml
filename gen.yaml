@@ -1,5 +1,5 @@
 config:
-  tag_json_camel: lower # lower 首字母小写驼峰，upper 首字母大写驼峰
+  tag_json_camel: lower # underline 下划线 lower 首字母小写驼峰，upper 首字母大写驼峰
 relation:
   - table: club
     column:

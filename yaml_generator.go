@@ -52,6 +52,7 @@ type Column struct {
 	Tag        map[string]map[string]string `yaml:"tag"`
 	Comment    string                       `yaml:"comment"`
 	Rename     string                       `yaml:"rename"`
+	Json       string                       `yaml:"json"`
 }
 
 type Relate struct {
@@ -62,6 +63,7 @@ type Relate struct {
 	JoinReferences string `yaml:"join_references"`
 	Many2many      string `yaml:"many_2_many"`
 	Type           string `yaml:"type"`
+	JSONTag        string `yaml:"json"`
 }
 
 type Config struct {
@@ -163,9 +165,15 @@ func (y *YamlGenerator) getTableRelateOpt(table *Table) []gen.ModelOpt {
 		if table.Many2many != "" {
 			relateConfig.Append("many2many", table.Many2many)
 		}
+
+		if table.JSONTag == "" {
+			table.JSONTag = NamingConversion(table.Table, y.yaml.Config.TagJsonCamel) + ",omitempty"
+		}
+
 		opt[i] = gen.FieldRelate(fieldType, y.generatedTable[table.Table], y.gen.Data[y.generatedTable[table.Table]].QueryStructMeta, &field.RelateConfig{
 			GORMTag:       relateConfig,
 			RelatePointer: relatePointer,
+			JSONTag:       table.JSONTag,
 		})
 	}
 
@@ -178,35 +186,35 @@ func (y *YamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool) {
 	hasOption := false
 	for name, column := range table.Column {
 		if column.Type != "" {
-			if strings.Contains(strings.ToLower(column.Type), "option") {
-				if column.Serializer == "json" || column.Serializer == "gob" || column.Serializer == "unixtime" {
-					if column.Tag == nil {
-						column.Tag = map[string]map[string]string{
-							"gorm": {
-								"serializer": column.Serializer,
-							},
-						}
-					} else {
-						column.Tag["gorm"]["serializer"] = column.Serializer
-					}
-					// 生成对应的类型文件
-					err := y.generateColumnOption(column)
-					if err != nil {
-						panic(err)
+			if column.Serializer == "json" || column.Serializer == "gob" || column.Serializer == "unixtime" {
+				if column.Tag == nil {
+					column.Tag = map[string]map[string]string{
+						"gorm": {
+							"serializer": column.Serializer,
+						},
 					}
 				} else {
-					// 自定义生成 Scan Value
-					err := y.generateColumnOption(column)
-					if err != nil {
-						panic(err)
-					}
+					column.Tag["gorm"]["serializer"] = column.Serializer
 				}
+			}
+
+			if strings.Contains(strings.ToLower(column.Type), "option") {
+				// 生成对应的类型文件
+				err := y.generateColumnOption(column)
+				if err != nil {
+					panic(err)
+				}
+
 				hasOption = true
 				opt = append(opt, gen.FieldType(name, "*"+strings.TrimRight(path.Base(y.columnOptionSaveDir), "/")+"."+column.Type))
 			} else {
 				opt = append(opt, gen.FieldType(name, column.Type))
 			}
 		}
+		if column.Json != "" {
+			opt = append(opt, gen.FieldJSONTag(name, column.Json))
+		}
+
 		if column.Tag != nil {
 			for tagType, tags := range column.Tag {
 				ttags := tags
@@ -239,19 +247,33 @@ func (y *YamlGenerator) getTableColumnOpt(table *Table) ([]gen.ModelOpt, bool) {
 		if column.Comment != "" {
 			opt = append(opt, gen.FieldComment(name, column.Comment))
 		}
+
 	}
 
 	for name, column := range table.Props {
 		tag := field.Tag{}
-		tag.Set(field.TagKeyJson, UnderscoreToCamelCase(name, y.yaml.Config.TagJsonCamel == "upper"))
-		opt = append(opt, gen.FieldNew(UnderscoreToCamelCase(name, true), "*"+strings.TrimRight(path.Base(y.columnOptionSaveDir), "/")+"."+column.Type, tag))
-		// 自定义生成 Scan Value
-		column.Serializer = "common"
-		err := y.generateColumnOption(column)
-		if err != nil {
-			panic(err)
+		if column.Json != "" {
+			tag.Set(field.TagKeyJson, column.Json)
+		} else {
+			tag.Set(field.TagKeyJson, NamingConversion(name, y.yaml.Config.TagJsonCamel)+",omitempty")
 		}
-		hasOption = true
+
+		tag.Set(field.TagKeyGorm, "-")
+
+		columnType := column.Type
+		if strings.Contains(strings.ToLower(column.Type), "option") {
+			// 自定义生成 Scan Value
+			column.Serializer = "common"
+			err := y.generateColumnOption(column)
+			if err != nil {
+				panic(err)
+			}
+			hasOption = true
+			columnType = "*" + strings.TrimRight(path.Base(y.columnOptionSaveDir), "/") + "." + column.Type
+		}
+
+		opt = append(opt, gen.FieldNew(UnderscoreToCamelCase(name, true), columnType, tag))
+
 	}
 	return opt, hasOption
 }
@@ -303,7 +325,7 @@ func (y *YamlGenerator) generateFromTable(table *Table, opt ...gen.ModelOpt) {
 func (y *YamlGenerator) Generate(opt ...gen.ModelOpt) {
 	if y.yaml.Config.TagJsonCamel != "" {
 		y.gen.WithJSONTagNameStrategy(func(columnName string) (tagContent string) {
-			return UnderscoreToCamelCase(columnName, y.yaml.Config.TagJsonCamel == "upper")
+			return NamingConversion(columnName, y.yaml.Config.TagJsonCamel)
 		})
 	}
 	for _, table := range y.yaml.TableMap {
